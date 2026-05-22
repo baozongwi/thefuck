@@ -213,7 +213,9 @@ To remove *The Fuck*, reverse the installation process:
 *The Fuck* attempts to match the previous command with a rule. If a match is
 found, a new command is created using the matched rule and executed. The UI
 shows the matched rule name and marks commands with side effects or dangerous
-operations before the shell alias evaluates the generated command. By default,
+operations. In zsh, accepted fixes are inserted back into the prompt with
+`print -z` instead of being evaluated immediately; press Enter yourself after
+reviewing the final command. By default,
 unsafe previous commands are not rerun just to capture their output; use
 `rerun_safe_only = False` if you need that legacy behavior. App-specific rule
 files are prefiltered by the command name before import, so `git ...` commands

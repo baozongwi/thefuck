@@ -1,7 +1,6 @@
 import io
 import os
 import shlex
-import six
 from collections import namedtuple
 from ..logs import warn
 from ..utils import memoize
@@ -81,32 +80,22 @@ class Generic(object):
 
     def split_command(self, command):
         """Split the command using shell-like syntax."""
-        encoded = self.encode_utf8(command)
-
         try:
-            splitted = [s.replace("??", "\\ ") for s in shlex.split(encoded.replace('\\ ', '??'))]
+            return [s.replace("??", "\\ ") for s in shlex.split(
+                command.replace('\\ ', '??'))]
         except ValueError:
-            splitted = encoded.split(' ')
-
-        return self.decode_utf8(splitted)
+            return command.split(' ')
 
     def encode_utf8(self, command):
-        if six.PY2:
-            return command.encode('utf8')
         return command
 
     def decode_utf8(self, command_parts):
-        if six.PY2:
-            return [s.decode('utf8') for s in command_parts]
         return command_parts
 
     def quote(self, s):
         """Return a shell-escaped version of the string s."""
 
-        if six.PY2:
-            from pipes import quote
-        else:
-            from shlex import quote
+        from shlex import quote
 
         return quote(s)
 

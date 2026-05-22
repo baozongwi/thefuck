@@ -42,3 +42,45 @@ def test_fix_command_exits_when_selected_command_run_fails(mocker):
         fix_command(Mock())
 
     assert excinfo.value.code == 1
+
+
+def test_fix_command_uses_no_output_match_without_rerun(mocker):
+    selected = Mock(run=Mock(return_value=True))
+    command = Mock(read_output=Mock())
+    mocker.patch('thefuck.entrypoints.fix_command.settings')
+    mocker.patch('thefuck.entrypoints.fix_command._get_raw_command',
+                 return_value=['git status'])
+    from_raw_script = mocker.patch(
+        'thefuck.types.Command.from_raw_script', return_value=command)
+    mocker.patch('thefuck.entrypoints.fix_command.get_corrected_commands',
+                 return_value=[selected])
+    mocker.patch('thefuck.entrypoints.fix_command.select_command',
+                 return_value=selected)
+
+    fix_command(Mock())
+
+    from_raw_script.assert_called_once_with(['git status'], read_output=False)
+    assert not command.read_output.called
+
+
+def test_fix_command_reads_output_when_no_output_rules_do_not_match(mocker):
+    selected = Mock(run=Mock(return_value=True))
+    command = Mock()
+    command_with_output = Mock()
+    command.read_output.return_value = command_with_output
+    get_corrected_commands = mocker.patch(
+        'thefuck.entrypoints.fix_command.get_corrected_commands',
+        side_effect=[[], [selected]])
+    mocker.patch('thefuck.entrypoints.fix_command.settings')
+    mocker.patch('thefuck.entrypoints.fix_command._get_raw_command',
+                 return_value=['git status'])
+    mocker.patch('thefuck.types.Command.from_raw_script',
+                 return_value=command)
+    mocker.patch('thefuck.entrypoints.fix_command.select_command',
+                 return_value=selected)
+
+    fix_command(Mock())
+
+    command.read_output.assert_called_once_with()
+    assert get_corrected_commands.call_args_list[0][0][0] == command
+    assert get_corrected_commands.call_args_list[1][0][0] == command_with_output

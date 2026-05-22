@@ -3,7 +3,6 @@ import os
 from subprocess import Popen, PIPE
 from tempfile import gettempdir
 from uuid import uuid4
-from ..conf import settings
 from ..const import ARGUMENT_PLACEHOLDER, USER_COMMAND_MARK
 from ..utils import DEVNULL, memoize
 from .generic import Generic
@@ -26,16 +25,13 @@ class Zsh(Generic):
                 export PYTHONIOENCODING=utf-8;
                 TF_CMD=$(
                     thefuck {argument_placeholder} "$@"
-                ) && eval "$TF_CMD";
+                ) && test -n "$TF_CMD" && print -z -- "$TF_CMD";
                 unset TF_HISTORY;
                 export PYTHONIOENCODING=$TF_PYTHONIOENCODING;
-                {alter_history}
             }}
         '''.format(
             name=alias_name,
-            argument_placeholder=ARGUMENT_PLACEHOLDER,
-            alter_history=('test -n "$TF_CMD" && print -s -- "$TF_CMD"'
-                           if settings.alter_history else ''))
+            argument_placeholder=ARGUMENT_PLACEHOLDER)
 
     def instant_mode_alias(self, alias_name):
         if os.environ.get('THEFUCK_INSTANT_MODE', '').lower() == 'true':

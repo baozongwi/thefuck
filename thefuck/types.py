@@ -65,8 +65,13 @@ class Command(object):
         kwargs.setdefault('output', self.output)
         return Command(**kwargs)
 
+    def read_output(self):
+        """Returns a copy with command output populated."""
+        output = get_output(self.script, self.script)
+        return self.update(output=output)
+
     @classmethod
-    def from_raw_script(cls, raw_script):
+    def from_raw_script(cls, raw_script, read_output=True):
         """Creates instance of `Command` from a list of script parts.
 
         :type raw_script: [basestring]
@@ -79,7 +84,7 @@ class Command(object):
             raise EmptyCommand
 
         expanded = shell.from_shell(script)
-        output = get_output(script, expanded)
+        output = get_output(script, expanded) if read_output else None
         return cls(expanded, output)
 
 

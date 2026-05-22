@@ -34,12 +34,17 @@ def fix_command(known_args):
         raw_command = _get_raw_command(known_args)
 
         try:
-            command = types.Command.from_raw_script(raw_command)
+            command = types.Command.from_raw_script(raw_command,
+                                                    read_output=False)
         except EmptyCommand:
             logs.debug('Empty command, nothing to do')
             return
 
-        corrected_commands = get_corrected_commands(command)
+        corrected_commands = list(get_corrected_commands(command))
+        if not corrected_commands:
+            command = command.read_output()
+            corrected_commands = get_corrected_commands(command)
+
         selected_command = select_command(corrected_commands)
 
         if selected_command:

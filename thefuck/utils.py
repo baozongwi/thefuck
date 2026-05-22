@@ -1,11 +1,11 @@
 import atexit
+import dbm
 import os
 import pickle
 import re
 import shelve
 import sys
 import threading
-import six
 from decorator import decorator
 from difflib import get_close_matches as difflib_get_close_matches
 from functools import wraps
@@ -15,13 +15,7 @@ from .system import Path
 
 DEVNULL = open(os.devnull, 'w')
 _CACHE_VERSION = 'v2'
-
-if six.PY2:
-    import anydbm
-    shelve_open_error = anydbm.error
-else:
-    import dbm
-    shelve_open_error = dbm.error
+shelve_open_error = dbm.error
 
 
 def memoize(fn):
@@ -162,14 +156,13 @@ def _get_all_executables(path_env, excluded_search_path_prefixes,
             if not include_path_in_search(path):
                 continue
             for exe in _safe(lambda: list(Path(path).iterdir()), []):
-                name = exe.name.decode('utf8') if six.PY2 else exe.name
+                name = exe.name
                 if not _safe(exe.is_dir, True) and name not in tf_entry_points:
                     entries.append(name)
     finally:
         settings.excluded_search_path_prefixes = old_excluded
 
-    entries.extend(alias.decode('utf8') if six.PY2 else alias
-                   for alias in aliases if alias != tf_alias)
+    entries.extend(alias for alias in aliases if alias != tf_alias)
 
     seen = set()
     unique = []
@@ -392,9 +385,6 @@ def format_raw_script(raw_script):
     :rtype: basestring
 
     """
-    if six.PY2:
-        script = ' '.join(arg.decode('utf-8') for arg in raw_script)
-    else:
-        script = ' '.join(raw_script)
+    script = ' '.join(raw_script)
 
     return script.lstrip()

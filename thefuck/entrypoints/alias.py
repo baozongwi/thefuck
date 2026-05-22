@@ -1,4 +1,3 @@
-import six
 import re
 import sys
 from ..conf import settings
@@ -18,16 +17,10 @@ def _get_alias(known_args):
     if not is_valid_alias_name(known_args.alias):
         raise ValueError('Unsafe alias name: {}'.format(known_args.alias))
 
-    if six.PY2:
-        warn("The Fuck will drop Python 2 support soon, more details "
-             "https://github.com/nvbn/thefuck/issues/685")
-
     alias = shell.app_alias(known_args.alias)
 
     if known_args.enable_experimental_instant_mode:
-        if six.PY2:
-            warn("Instant mode requires Python 3")
-        elif not which('script'):
+        if not which('script'):
             warn("Instant mode requires `script` app")
         else:
             return shell.instant_mode_alias(known_args.alias)

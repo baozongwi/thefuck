@@ -16,6 +16,7 @@ def with_confirmation(proc, TIMEOUT):
     assert proc.expect([TIMEOUT, u'enter'])
     assert proc.expect_exact([TIMEOUT, u'ctrl+c'])
     proc.send('\n')
+    proc.send('\n')
 
     assert proc.expect([TIMEOUT, u'test'])
 
@@ -52,6 +53,7 @@ def select_command_with_arrows(proc, TIMEOUT):
     proc.send('\033[B')
     assert proc.expect([TIMEOUT, u'git help', u'git hook'])
     proc.send('\n')
+    proc.send('\n')
 
     assert proc.expect([TIMEOUT, u'usage', u'fatal: not a git repository'])
 
@@ -79,6 +81,7 @@ def without_confirmation(proc, TIMEOUT):
 
     proc.sendline(u'fuck')
     assert proc.expect([TIMEOUT, u'echo test'])
+    proc.sendline(u'')
     assert proc.expect([TIMEOUT, u'test'])
 
 

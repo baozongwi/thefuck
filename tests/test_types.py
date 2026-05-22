@@ -162,6 +162,18 @@ class TestCommand(object):
                                       stderr=STDOUT,
                                       env=os_environ)
 
+    def test_from_script_can_delay_output(self, Popen):
+        command = Command.from_raw_script(['apt-get', 'search', 'vim'],
+                                          read_output=False)
+        assert command == Command('apt-get search vim', None)
+        assert not Popen.called
+
+    def test_read_output(self, Popen):
+        command = Command.from_raw_script(['apt-get', 'search', 'vim'],
+                                          read_output=False)
+        assert command.read_output() == Command('apt-get search vim', 'output')
+        assert Popen.called
+
     @pytest.mark.parametrize('script, result', [
         ([], None),
         ([''], None),

@@ -19,7 +19,7 @@ if version < (3, 8):
 
 VERSION = '3.32'
 
-install_requires = ['psutil', 'colorama', 'six', 'decorator', 'pyte']
+install_requires = ['psutil', 'colorama', 'decorator', 'pyte']
 extras_require = {
                   ":sys_platform=='win32'": ['win_unicode_console']}
 
