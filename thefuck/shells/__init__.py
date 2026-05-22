@@ -4,17 +4,30 @@ implement `from_shell`, `to_shell`, `app_alias`, `put_to_history` and
 """
 import os
 from psutil import Process
-from .bash import Bash  # noqa: F401
-from .fish import Fish  # noqa: F401
 from .generic import Generic
-from .tcsh import Tcsh  # noqa: F401
 from .zsh import Zsh
-from .powershell import Powershell  # noqa: F401
 
 # The optimized runtime path is intentionally zsh-only.  The legacy shell
 # classes remain importable for compatibility/tests, but automatic detection
 # only selects zsh; all other shells fall back to Generic.
 shells = {'zsh': Zsh}
+
+
+def __getattr__(name):
+    """Lazily expose legacy shell classes without loading them at startup."""
+    if name == 'Bash':
+        from .bash import Bash
+        return Bash
+    elif name == 'Fish':
+        from .fish import Fish
+        return Fish
+    elif name == 'Tcsh':
+        from .tcsh import Tcsh
+        return Tcsh
+    elif name == 'Powershell':
+        from .powershell import Powershell
+        return Powershell
+    raise AttributeError(name)
 
 
 def _get_shell_from_env():
