@@ -51,9 +51,12 @@ class TestSettingsFromEnv(object):
                            'THEFUCK_WAIT_COMMAND': '55',
                            'THEFUCK_REQUIRE_CONFIRMATION': 'true',
                            'THEFUCK_NO_COLORS': 'false',
+                           'THEFUCK_PROFILE': 'true',
                            'THEFUCK_PRIORITY': 'bash=10:lisp=wrong:vim=15',
                            'THEFUCK_WAIT_SLOW_COMMAND': '999',
                            'THEFUCK_SLOW_COMMANDS': 'lein:react-native:./gradlew',
+                           'THEFUCK_REQUIRE_SAFETY_CONFIRMATION': 'false',
+                           'THEFUCK_RERUN_SAFE_ONLY': 'false',
                            'THEFUCK_NUM_CLOSE_MATCHES': '359',
                            'THEFUCK_EXCLUDED_SEARCH_PATH_PREFIXES': '/media/:/mnt/'})
         settings.init()
@@ -62,9 +65,12 @@ class TestSettingsFromEnv(object):
         assert settings.wait_command == 55
         assert settings.require_confirmation is True
         assert settings.no_colors is False
+        assert settings.profile is True
         assert settings.priority == {'bash': 10, 'vim': 15}
         assert settings.wait_slow_command == 999
         assert settings.slow_commands == ['lein', 'react-native', './gradlew']
+        assert settings.require_safety_confirmation is False
+        assert settings.rerun_safe_only is False
         assert settings.num_close_matches == 359
         assert settings.excluded_search_path_prefixes == ['/media/', '/mnt/']
 
@@ -75,10 +81,11 @@ class TestSettingsFromEnv(object):
 
 
 def test_settings_from_args(settings):
-    settings.init(Mock(yes=True, debug=True, repeat=True))
+    settings.init(Mock(yes=True, debug=True, repeat=True, profile=True))
     assert not settings.require_confirmation
     assert settings.debug
     assert settings.repeat
+    assert settings.profile
 
 
 class TestInitializeSettingsFile(object):

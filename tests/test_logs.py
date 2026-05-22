@@ -17,3 +17,11 @@ def test_debug(capsys, settings, debug, stderr):
     settings.debug = debug
     logs.debug('test')
     assert capsys.readouterr() == ('', stderr)
+
+
+@pytest.mark.usefixtures('no_colors')
+def test_profile_time(capsys, settings):
+    settings.profile = True
+    with logs.debug_time('Something'):
+        pass
+    assert 'PROFILE: Something took:' in capsys.readouterr()[1]

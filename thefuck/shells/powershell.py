@@ -13,7 +13,7 @@ class Powershell(Generic):
                '        $fuck = $(thefuck $args $history);\n' \
                '        if (-not [string]::IsNullOrWhiteSpace($fuck)) {\n' \
                '            if ($fuck.StartsWith("echo")) { $fuck = $fuck.Substring(5); }\n' \
-               '            else { iex "$fuck"; }\n' \
+               '            else { Invoke-Expression -Command $fuck; }\n' \
                '        }\n' \
                '    }\n' \
                '    [Console]::ResetColor() \n' \

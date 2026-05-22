@@ -25,6 +25,23 @@ class TestRerun(object):
         wait_output_mock.assert_called_once()
 
     @patch('thefuck.output_readers.rerun.Popen')
+    def test_get_output_skips_unsafe_rerun(self, popen_mock, settings):
+        settings.rerun_safe_only = True
+        assert rerun.get_output('sudo rm -rf /tmp/project',
+                                'sudo rm -rf /tmp/project') is None
+        assert not popen_mock.called
+
+    @patch('thefuck.output_readers.rerun._wait_output', return_value=True)
+    @patch('thefuck.output_readers.rerun.Popen')
+    def test_get_output_can_opt_into_unsafe_rerun(
+            self, popen_mock, wait_output_mock, settings):
+        settings.rerun_safe_only = False
+        popen_mock.return_value.stdout.read.return_value = b'output'
+        assert rerun.get_output('sudo rm -rf /tmp/project',
+                                'sudo rm -rf /tmp/project') == 'output'
+        wait_output_mock.assert_called_once()
+
+    @patch('thefuck.output_readers.rerun.Popen')
     def test_get_output_invalid_continuation_byte(self, popen_mock):
         output = b'ls: illegal option -- \xc3\nusage: ls [-@ABC...] [file ...]\n'
         expected = u'ls: illegal option -- \ufffd\nusage: ls [-@ABC...] [file ...]\n'

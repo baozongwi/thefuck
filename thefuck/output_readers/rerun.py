@@ -5,6 +5,7 @@ from subprocess import Popen, PIPE, STDOUT
 from psutil import AccessDenied, Process, TimeoutExpired
 from .. import logs
 from ..conf import settings
+from ..safety import is_safe_to_rerun
 
 
 def _kill_process(proc):
@@ -51,6 +52,10 @@ def get_output(script, expanded):
     :rtype: str | None
 
     """
+    if settings.rerun_safe_only and not is_safe_to_rerun(expanded or script):
+        logs.debug(u'Skipping rerun for unsafe command: {}'.format(script))
+        return None
+
     env = dict(os.environ)
     env.update(settings.env)
 

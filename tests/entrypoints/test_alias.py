@@ -1,6 +1,6 @@
 from mock import Mock
 import pytest
-from thefuck.entrypoints.alias import _get_alias, print_alias
+from thefuck.entrypoints.alias import _get_alias, print_alias, is_valid_alias_name
 
 
 @pytest.mark.parametrize(
@@ -37,3 +37,20 @@ def test_print_alias(mocker):
     print_alias(known_args)
     settings_mock.init.assert_called_once_with(known_args)
     _get_alias_mock.assert_called_once_with(known_args)
+
+
+@pytest.mark.parametrize('alias', ['fuck', 'FUCK', 'fix-it', '_fix'])
+def test_is_valid_alias_name(alias):
+    assert is_valid_alias_name(alias)
+
+
+@pytest.mark.parametrize('alias', ['bad;rm', 'bad$(rm)', 'bad alias', ''])
+def test_is_invalid_alias_name(alias):
+    assert not is_valid_alias_name(alias)
+
+
+def test_get_alias_rejects_unsafe_alias_name():
+    args = Mock(enable_experimental_instant_mode=False,
+                alias='bad;rm -rf /')
+    with pytest.raises(ValueError):
+        _get_alias(args)

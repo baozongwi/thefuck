@@ -29,6 +29,12 @@ class TestCorrectedCommand(object):
         assert u'{}'.format(CorrectedCommand(u'echo café', None, 100)) == \
                u'CorrectedCommand(script=echo café, side_effect=None, priority=100)'
 
+    def test_rule_name_and_safety_metadata(self):
+        command = CorrectedCommand('rm -rf /tmp/project', None, 100,
+                                   rule_name='rm_dir')
+        assert command.rule_name == 'rm_dir'
+        assert command.safety.level == 'dangerous'
+
     @pytest.mark.parametrize('script, printed, override_settings', [
         ('git branch', 'git branch', {'repeat': False, 'debug': False}),
         ('git brunch',
@@ -39,9 +45,21 @@ class TestCorrectedCommand(object):
          {'repeat': True, 'debug': True})])
     def test_run(self, capsys, settings, script, printed, override_settings):
         settings.update(override_settings)
-        CorrectedCommand(script, None, 1000).run(Command(script, ''))
+        assert CorrectedCommand(script, None, 1000).run(Command(script, ''))
         out, _ = capsys.readouterr()
         assert out == printed
+
+    @pytest.mark.usefixtures('no_colors')
+    def test_run_aborts_when_side_effect_fails(self, capsys):
+        def side_effect(*_):
+            raise OSError('denied')
+
+        result = CorrectedCommand('echo ok', side_effect, 1000).run(
+            Command('echo ok', ''))
+        out, err = capsys.readouterr()
+        assert result is False
+        assert out == ''
+        assert '[WARN] Side effect failed for corrected command:' in err
 
 
 class TestRule(object):
@@ -111,6 +129,12 @@ class TestRule(object):
                     priority=100)
         assert (list(rule.get_corrected_commands(Command('test', '')))
                 == [CorrectedCommand(script='test!', priority=100)])
+
+    def test_get_corrected_commands_sets_rule_name(self):
+        rule = Rule(name='test_rule', get_new_command=lambda x: x.script + '!',
+                    priority=100)
+        command = list(rule.get_corrected_commands(Command('test', '')))[0]
+        assert command.rule_name == 'test_rule'
 
 
 class TestCommand(object):

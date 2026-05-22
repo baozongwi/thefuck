@@ -4,6 +4,7 @@ import pickle
 import re
 import shelve
 import sys
+import threading
 import six
 from decorator import decorator
 from difflib import get_close_matches as difflib_get_close_matches
@@ -13,6 +14,7 @@ from .conf import settings
 from .system import Path
 
 DEVNULL = open(os.devnull, 'w')
+_CACHE_VERSION = 'v2'
 
 if six.PY2:
     import anydbm
@@ -104,13 +106,45 @@ def get_close_matches(word, possibilities, n=None, cutoff=0.6):
     return difflib_get_close_matches(word, possibilities, n, cutoff)
 
 
+def _normalize_path(path):
+    return os.path.normcase(os.path.normpath(os.path.expanduser(path)))
+
+
+def _path_equal_or_child(path, prefix):
+    path = _normalize_path(path)
+    prefix = _normalize_path(prefix)
+    if path == prefix:
+        return True
+    separators = [os.sep]
+    if os.altsep:
+        separators.append(os.altsep)
+    if '\\' not in separators:
+        separators.append('\\')
+    return any(path.startswith(prefix.rstrip(sep) + sep)
+               for sep in separators)
+
+
 def include_path_in_search(path):
-    return not any(path.startswith(x) for x in settings.excluded_search_path_prefixes)
+    return not any(_path_equal_or_child(path, excluded)
+                   for excluded in settings.excluded_search_path_prefixes)
+
+
+def get_all_executables():
+    from thefuck.shells import shell
+
+    aliases = tuple(shell.get_aliases())
+    return _get_all_executables(
+        os.environ.get('PATH', ''),
+        tuple(settings.excluded_search_path_prefixes),
+        get_alias(),
+        aliases,
+        os.pathsep,
+        id(Path))
 
 
 @memoize
-def get_all_executables():
-    from thefuck.shells import shell
+def _get_all_executables(path_env, excluded_search_path_prefixes,
+                         tf_alias, aliases, pathsep, path_cls_id):
 
     def _safe(fn, fallback):
         try:
@@ -118,19 +152,32 @@ def get_all_executables():
         except OSError:
             return fallback
 
-    tf_alias = get_alias()
     tf_entry_points = ['thefuck', 'fuck']
 
-    bins = [exe.name.decode('utf8') if six.PY2 else exe.name
-            for path in os.environ.get('PATH', '').split(os.pathsep)
-            if include_path_in_search(path)
-            for exe in _safe(lambda: list(Path(path).iterdir()), [])
-            if not _safe(exe.is_dir, True)
-            and exe.name not in tf_entry_points]
-    aliases = [alias.decode('utf8') if six.PY2 else alias
-               for alias in shell.get_aliases() if alias != tf_alias]
+    entries = []
+    old_excluded = settings.excluded_search_path_prefixes
+    settings.excluded_search_path_prefixes = list(excluded_search_path_prefixes)
+    try:
+        for path in path_env.split(pathsep):
+            if not include_path_in_search(path):
+                continue
+            for exe in _safe(lambda: list(Path(path).iterdir()), []):
+                name = exe.name.decode('utf8') if six.PY2 else exe.name
+                if not _safe(exe.is_dir, True) and name not in tf_entry_points:
+                    entries.append(name)
+    finally:
+        settings.excluded_search_path_prefixes = old_excluded
 
-    return bins + aliases
+    entries.extend(alias.decode('utf8') if six.PY2 else alias
+                   for alias in aliases if alias != tf_alias)
+
+    seen = set()
+    unique = []
+    for entry in entries:
+        if entry not in seen:
+            seen.add(entry)
+            unique.append(entry)
+    return unique
 
 
 def replace_argument(script, from_, to):
@@ -201,6 +248,7 @@ class Cache(object):
 
     def __init__(self):
         self._db = None
+        self._lock = threading.RLock()
 
     def _init_db(self):
         try:
@@ -218,7 +266,10 @@ class Cache(object):
         except shelve_open_error + (ImportError,):
             # Caused when switching between Python versions
             warn("Removing possibly out-dated cache")
-            os.remove(cache_path)
+            try:
+                os.remove(cache_path)
+            except OSError:
+                pass
             self._db = shelve.open(cache_path)
 
         atexit.register(self._db.close)
@@ -244,25 +295,27 @@ class Cache(object):
             return '0'
 
     def _get_key(self, fn, depends_on, args, kwargs):
-        parts = (fn.__module__, repr(fn).split('at')[0],
+        fn_name = getattr(fn, '__qualname__', getattr(fn, '__name__', repr(fn)))
+        parts = (fn.__module__, fn_name,
                  depends_on, args, kwargs)
-        return str(pickle.dumps(parts))
+        return '{}:{}'.format(_CACHE_VERSION, pickle.dumps(parts))
 
     def get_value(self, fn, depends_on, args, kwargs):
-        if self._db is None:
-            self._init_db()
+        with self._lock:
+            if self._db is None:
+                self._init_db()
 
-        depends_on = [Path(name).expanduser().absolute().as_posix()
-                      for name in depends_on]
-        key = self._get_key(fn, depends_on, args, kwargs)
-        etag = '.'.join(self._get_mtime(path) for path in depends_on)
+            depends_on = [Path(name).expanduser().absolute().as_posix()
+                          for name in depends_on]
+            key = self._get_key(fn, depends_on, args, kwargs)
+            etag = '.'.join(self._get_mtime(path) for path in depends_on)
 
-        if self._db.get(key, {}).get('etag') == etag:
-            return self._db[key]['value']
-        else:
-            value = fn(*args, **kwargs)
-            self._db[key] = {'etag': etag, 'value': value}
-            return value
+            if self._db.get(key, {}).get('etag') == etag:
+                return self._db[key]['value']
+            else:
+                value = fn(*args, **kwargs)
+                self._db[key] = {'etag': etag, 'value': value}
+                return value
 
 
 _cache = Cache()

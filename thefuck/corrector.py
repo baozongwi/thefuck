@@ -1,11 +1,62 @@
 import sys
+import os
 from .conf import settings
 from .types import Rule
 from .system import Path
 from . import logs
 
 
-def get_loaded_rules(rules_paths):
+_APP_PREFIXES = set([
+    'adb', 'ag', 'apt', 'aws', 'az', 'brew', 'cargo', 'cat', 'cd',
+    'choco', 'composer', 'conda', 'cp', 'dnf', 'docker', 'django',
+    'fab', 'gem', 'git', 'go', 'gradle', 'grep', 'grunt', 'gulp',
+    'heroku', 'hostscli', 'ifconfig', 'java', 'javac', 'lein', 'ln',
+    'ls', 'man', 'mercurial', 'mkdir', 'mvn', 'nixos', 'npm',
+    'omnienv', 'pacman', 'php', 'python', 'rails', 'rm', 'sed',
+    'ssh', 'systemctl', 'terraform', 'tmux', 'tsuru', 'vagrant',
+    'whois', 'workon', 'yarn', 'yum'
+])
+
+
+def _command_prefixes(command):
+    if not command.script_parts:
+        return None
+
+    app = os.path.basename(command.script_parts[0]).lower()
+    app = app.replace('-', '_')
+    prefixes = set([app])
+
+    if app in ('apt_get', 'apt_cache'):
+        prefixes.add('apt')
+    elif app in ('pip2', 'pip3'):
+        prefixes.add('pip')
+    elif app in ('python2', 'python3'):
+        prefixes.add('python')
+    elif app == 'gradlew':
+        prefixes.add('gradle')
+
+    return prefixes
+
+
+def _rule_prefix(rule_name):
+    return rule_name.split('_', 1)[0]
+
+
+def _should_load_rule(rule_path, command=None):
+    """Cheap rule prefilter based on filename and command application."""
+    if command is None or rule_path.name == '__init__.py':
+        return True
+
+    rule_name = rule_path.name[:-3]
+    prefix = _rule_prefix(rule_name)
+    if prefix not in _APP_PREFIXES:
+        return True
+
+    prefixes = _command_prefixes(command)
+    return not prefixes or prefix in prefixes
+
+
+def get_loaded_rules(rules_paths, command=None):
     """Yields all available rules.
 
     :type rules_paths: [Path]
@@ -13,7 +64,7 @@ def get_loaded_rules(rules_paths):
 
     """
     for path in rules_paths:
-        if path.name != '__init__.py':
+        if path.name != '__init__.py' and _should_load_rule(path, command):
             rule = Rule.from_path(path)
             if rule and rule.is_enabled:
                 yield rule
@@ -37,7 +88,7 @@ def get_rules_import_paths():
                 yield contrib_rules
 
 
-def get_rules():
+def get_rules(command=None):
     """Returns all enabled rules.
 
     :rtype: [Rule]
@@ -45,7 +96,7 @@ def get_rules():
     """
     paths = [rule_path for path in get_rules_import_paths()
              for rule_path in sorted(path.glob('*.py'))]
-    return sorted(get_loaded_rules(paths),
+    return sorted(get_loaded_rules(paths, command),
                   key=lambda rule: rule.priority)
 
 
@@ -86,7 +137,7 @@ def get_corrected_commands(command):
 
     """
     corrected_commands = (
-        corrected for rule in get_rules()
+        corrected for rule in get_rules(command)
         if rule.is_match(command)
         for corrected in rule.get_corrected_commands(command))
     return organize_commands(corrected_commands)

@@ -48,22 +48,21 @@ def failed(msg):
 
 
 def show_corrected_command(corrected_command):
-    sys.stderr.write(u'{prefix}{bold}{script}{reset}{side_effect}\n'.format(
+    sys.stderr.write(u'{prefix}{bold}{script}{reset}{details}\n'.format(
         prefix=const.USER_COMMAND_MARK,
-        script=corrected_command.script,
-        side_effect=u' (+side effect)' if corrected_command.side_effect else u'',
+        script=_format_corrected_command(corrected_command),
+        details='',
         bold=color(colorama.Style.BRIGHT),
         reset=color(colorama.Style.RESET_ALL)))
 
 
 def confirm_text(corrected_command):
     sys.stderr.write(
-        (u'{prefix}{clear}{bold}{script}{reset}{side_effect} '
+        (u'{prefix}{clear}{bold}{script}{reset} '
          u'[{green}enter{reset}/{blue}↑{reset}/{blue}↓{reset}'
          u'/{red}ctrl+c{reset}]').format(
             prefix=const.USER_COMMAND_MARK,
-            script=corrected_command.script,
-            side_effect=' (+side effect)' if corrected_command.side_effect else '',
+            script=_format_corrected_command(corrected_command),
             clear='\033[1K\r',
             bold=color(colorama.Style.BRIGHT),
             green=color(colorama.Fore.GREEN),
@@ -72,9 +71,52 @@ def confirm_text(corrected_command):
             blue=color(colorama.Fore.BLUE)))
 
 
+def safety_confirm_text(corrected_command):
+    sys.stderr.write(
+        (u'{prefix}{clear}{bold}{script}{reset} '
+         u'[{green}enter again{reset}/{red}ctrl+c{reset}]').format(
+            prefix=const.USER_COMMAND_MARK,
+            script=_format_corrected_command(corrected_command),
+            clear='\033[1K\r',
+            bold=color(colorama.Style.BRIGHT),
+            green=color(colorama.Fore.GREEN),
+            red=color(colorama.Fore.RED),
+            reset=color(colorama.Style.RESET_ALL)))
+
+
+def _format_corrected_command(corrected_command):
+    side_effect = u' (+side effect)' if corrected_command.side_effect else u''
+    details = []
+    if getattr(corrected_command, 'rule_name', None):
+        details.append(u'rule: {}'.format(corrected_command.rule_name))
+
+    safety = getattr(corrected_command, 'safety', None)
+    if safety and safety.level == 'dangerous':
+        details.append(u'danger: {}'.format(u', '.join(safety.reasons)))
+    elif safety and safety.level == 'side-effect' and corrected_command.rule_name:
+        details.append(u'side effect')
+
+    if details:
+        return u'{}{} {}'.format(
+            corrected_command.script,
+            side_effect,
+            u' '.join(u'[{}]'.format(detail) for detail in details))
+    else:
+        return u'{}{}'.format(corrected_command.script, side_effect)
+
+
 def debug(msg):
     if settings.debug:
         sys.stderr.write(u'{blue}{bold}DEBUG:{reset} {msg}\n'.format(
+            msg=msg,
+            reset=color(colorama.Style.RESET_ALL),
+            blue=color(colorama.Fore.BLUE),
+            bold=color(colorama.Style.BRIGHT)))
+
+
+def profile(msg):
+    if settings.profile:
+        sys.stderr.write(u'{blue}{bold}PROFILE:{reset} {msg}\n'.format(
             msg=msg,
             reset=color(colorama.Style.RESET_ALL),
             blue=color(colorama.Fore.BLUE),
@@ -87,7 +129,9 @@ def debug_time(msg):
     try:
         yield
     finally:
-        debug(u'{} took: {}'.format(msg, datetime.now() - started))
+        elapsed = datetime.now() - started
+        debug(u'{} took: {}'.format(msg, elapsed))
+        profile(u'{} took: {}'.format(msg, elapsed))
 
 
 def how_to_configure_alias(configuration_details):

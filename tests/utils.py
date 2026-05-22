@@ -15,6 +15,7 @@ class Rule(types.Rule):
 
 
 class CorrectedCommand(types.CorrectedCommand):
-    def __init__(self, script='', side_effect=None, priority=DEFAULT_PRIORITY):
+    def __init__(self, script='', side_effect=None, priority=DEFAULT_PRIORITY,
+                 rule_name=None):
         super(CorrectedCommand, self).__init__(
-            script, side_effect, priority)
+            script, side_effect, priority, rule_name)

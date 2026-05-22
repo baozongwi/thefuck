@@ -6,7 +6,8 @@ from mock import Mock, call, patch
 from thefuck.utils import default_settings, \
     memoize, get_closest, get_all_executables, replace_argument, \
     get_all_matched_commands, is_app, for_app, cache, \
-    get_valid_history_without_current, _cache, get_close_matches
+    get_valid_history_without_current, _cache, get_close_matches, \
+    include_path_in_search
 from thefuck.types import Command
 
 
@@ -74,6 +75,13 @@ def test_get_all_executables():
     assert 'vim' in all_callables
     assert 'fsck' in all_callables
     assert 'fuck' not in all_callables
+    assert len(all_callables) == len(set(all_callables))
+
+
+def test_include_path_in_search_is_path_aware(settings):
+    settings.excluded_search_path_prefixes = ['/mnt/foo']
+    assert not include_path_in_search('/mnt/foo/bin')
+    assert include_path_in_search('/mnt/foobar/bin')
 
 
 @pytest.fixture
@@ -232,6 +240,10 @@ class TestCache(object):
         shelve.update({key: {'etag': '-1', 'value': 'old-value'}})
         assert fn() == 'test'
         assert shelve == {key: {'etag': '0', 'value': 'test'}}
+
+    def test_cache_key_includes_version(self, fn):
+        key = _cache._get_key(fn, [], (), {})
+        assert key.startswith('v')
 
 
 class TestGetValidHistoryWithoutCurrent(object):

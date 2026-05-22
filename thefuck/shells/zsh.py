@@ -25,8 +25,8 @@ class Zsh(Generic):
                 export TF_HISTORY;
                 export PYTHONIOENCODING=utf-8;
                 TF_CMD=$(
-                    thefuck {argument_placeholder} $@
-                ) && eval $TF_CMD;
+                    thefuck {argument_placeholder} "$@"
+                ) && eval "$TF_CMD";
                 unset TF_HISTORY;
                 export PYTHONIOENCODING=$TF_PYTHONIOENCODING;
                 {alter_history}
@@ -34,7 +34,7 @@ class Zsh(Generic):
         '''.format(
             name=alias_name,
             argument_placeholder=ARGUMENT_PLACEHOLDER,
-            alter_history=('test -n "$TF_CMD" && print -s $TF_CMD'
+            alter_history=('test -n "$TF_CMD" && print -s -- "$TF_CMD"'
                            if settings.alter_history else ''))
 
     def instant_mode_alias(self, alias_name):
@@ -56,7 +56,7 @@ class Zsh(Generic):
                 thefuck --shell-logger {log};
                 rm -f {log};
                 exit
-            '''.format(log=log_path)
+            '''.format(log=self.quote(log_path))
 
     def _parse_alias(self, alias):
         name, value = alias.split('=', 1)

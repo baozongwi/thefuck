@@ -106,7 +106,7 @@ Reading package lists... Done
 
 ## Requirements
 
-- python (3.5+)
+- python (3.8+)
 - pip
 - python-dev
 
@@ -151,8 +151,8 @@ pip install thefuck
 [Alternatively, you may use an OS package manager (OS X, Ubuntu, Arch).](https://github.com/nvbn/thefuck/wiki/Installation)
 
 <a href='#manual-installation' name='manual-installation'>#</a>
-It is recommended that you place this command in your `.bash_profile`,
-`.bashrc`, `.zshrc` or other startup script:
+The optimized shell integration is zsh-only. Put this command in your
+`.zshrc`:
 
 ```bash
 eval $(thefuck --alias)
@@ -160,10 +160,8 @@ eval $(thefuck --alias)
 eval $(thefuck --alias FUCK)
 ```
 
-[Or in your shell config (Bash, Zsh, Fish, Powershell, tcsh).](https://github.com/nvbn/thefuck/wiki/Shell-aliases)
-
 Changes are only available in a new shell session. To make changes immediately
-available, run `source ~/.bashrc` (or your shell config file like `.zshrc`).
+available, run `source ~/.zshrc`.
 
 To run fixed commands without confirmation, use the `--yeah` option (or just `-y` for short, or `--hard` if you're especially frustrated):
 
@@ -171,11 +169,28 @@ To run fixed commands without confirmation, use the `--yeah` option (or just `-y
 fuck --yeah
 ```
 
+Safety confirmations are still enforced for commands that look destructive
+or have rule side effects. For example, fixes that add `rm -rf`, `sudo`,
+`kill`, force-push/delete Git state, install packages, modify `known_hosts`,
+or run a rule `side_effect` require an extra confirmation before anything is
+printed back to the shell for execution. Set `require_safety_confirmation = False`
+only if you explicitly want the old fully automatic behavior.
+
 To fix commands recursively until succeeding, use the `-r` option:
 
 ```bash
 fuck -r
 ```
+
+To inspect performance, use `--profile`:
+
+```bash
+fuck --profile
+```
+
+This prints timing for the total correction flow, command reruns, rule imports,
+and rule matching. It is intended for finding slow rules or slow external
+commands before doing deeper optimization.
 
 ##### [Back to Contents](#contents)
 
@@ -190,13 +205,20 @@ pip3 install thefuck --upgrade
 ## Uninstall
 
 To remove *The Fuck*, reverse the installation process:
-- erase or comment *thefuck* alias line from your Bash, Zsh, Fish, Powershell, tcsh, ... shell config
+- erase or comment *thefuck* alias line from your `.zshrc`
 - use your package manager (brew, pip3, pkg, crew, pip) to uninstall the binaries
 
 ## How it works
 
 *The Fuck* attempts to match the previous command with a rule. If a match is
-found, a new command is created using the matched rule and executed. The
+found, a new command is created using the matched rule and executed. The UI
+shows the matched rule name and marks commands with side effects or dangerous
+operations before the shell alias evaluates the generated command. By default,
+unsafe previous commands are not rerun just to capture their output; use
+`rerun_safe_only = False` if you need that legacy behavior. App-specific rule
+files are prefiltered by the command name before import, so `git ...` commands
+do not spend time importing `npm_*`, `docker_*`, or other unrelated rule files.
+The
 following rules are enabled by default:
 
 * `adb_unknown_command` &ndash; fixes misspelled commands like `adb logcta`;
@@ -422,7 +444,7 @@ def get_new_command(command):
 enabled_by_default = True
 
 def side_effect(command, fixed_command):
-    subprocess.call('chmod 777 .', shell=True)
+    subprocess.call(['chmod', 'u+x', './script.sh'])
 
 priority = 1000  # Lower first, default is 1000
 
@@ -443,14 +465,17 @@ Several *The Fuck* parameters can be changed in the file `$XDG_CONFIG_HOME/thefu
 * `rules` &ndash; list of enabled rules, by default `thefuck.const.DEFAULT_RULES`;
 * `exclude_rules` &ndash; list of disabled rules, by default `[]`;
 * `require_confirmation` &ndash; requires confirmation before running new command, by default `True`;
+* `require_safety_confirmation` &ndash; requires an extra confirmation for dangerous commands and rule side effects, by default `True`;
 * `wait_command` &ndash; the max amount of time in seconds for getting previous command output;
 * `no_colors` &ndash; disable colored output;
 * `priority` &ndash; dict with rules priorities, rule with lower `priority` will be matched first;
 * `debug` &ndash; enables debug output, by default `False`;
+* `profile` &ndash; prints timing information for rule loading, matching, reruns, and total correction time, by default `False`;
 * `history_limit` &ndash; the numeric value of how many history commands will be scanned, like `2000`;
 * `alter_history` &ndash; push fixed command to history, by default `True`;
 * `wait_slow_command` &ndash; max amount of time in seconds for getting previous command output if it in `slow_commands` list;
 * `slow_commands` &ndash; list of slow commands;
+* `rerun_safe_only` &ndash; skip rerunning commands that look destructive when collecting output, by default `True`;
 * `num_close_matches` &ndash; the maximum number of close matches to suggest, by default `3`.
 * `excluded_search_path_prefixes` &ndash; path prefixes to ignore when searching for commands, by default `[]`.
 
@@ -460,13 +485,16 @@ An example of `settings.py`:
 rules = ['sudo', 'no_command']
 exclude_rules = ['git_push']
 require_confirmation = True
+require_safety_confirmation = True
 wait_command = 10
 no_colors = False
 priority = {'sudo': 100, 'no_command': 9999}
 debug = False
+profile = False
 history_limit = 9999
 wait_slow_command = 20
 slow_commands = ['react-native', 'gradle']
+rerun_safe_only = True
 num_close_matches = 5
 ```
 
@@ -475,15 +503,18 @@ Or via environment variables:
 * `THEFUCK_RULES` &ndash; list of enabled rules, like `DEFAULT_RULES:rm_root` or `sudo:no_command`;
 * `THEFUCK_EXCLUDE_RULES` &ndash; list of disabled rules, like `git_pull:git_push`;
 * `THEFUCK_REQUIRE_CONFIRMATION` &ndash; require confirmation before running new command, `true/false`;
+* `THEFUCK_REQUIRE_SAFETY_CONFIRMATION` &ndash; require extra confirmation for dangerous commands and rule side effects, `true/false`;
 * `THEFUCK_WAIT_COMMAND` &ndash; the max amount of time in seconds for getting previous command output;
 * `THEFUCK_NO_COLORS` &ndash; disable colored output, `true/false`;
 * `THEFUCK_PRIORITY` &ndash; priority of the rules, like `no_command=9999:apt_get=100`,
 rule with lower `priority` will be matched first;
 * `THEFUCK_DEBUG` &ndash; enables debug output, `true/false`;
+* `THEFUCK_PROFILE` &ndash; prints timing information, `true/false`;
 * `THEFUCK_HISTORY_LIMIT` &ndash; how many history commands will be scanned, like `2000`;
 * `THEFUCK_ALTER_HISTORY` &ndash; push fixed command to history `true/false`;
 * `THEFUCK_WAIT_SLOW_COMMAND` &ndash; the max amount of time in seconds for getting previous command output if it in `slow_commands` list;
 * `THEFUCK_SLOW_COMMANDS` &ndash; list of slow commands, like `lein:gradle`;
+* `THEFUCK_RERUN_SAFE_ONLY` &ndash; skip rerunning commands that look destructive when collecting output, `true/false`;
 * `THEFUCK_NUM_CLOSE_MATCHES` &ndash; the maximum number of close matches to suggest, like `5`.
 * `THEFUCK_EXCLUDED_SEARCH_PATH_PREFIXES` &ndash; path prefixes to ignore when searching for commands, by default `[]`.
 
@@ -493,10 +524,13 @@ For example:
 export THEFUCK_RULES='sudo:no_command'
 export THEFUCK_EXCLUDE_RULES='git_pull:git_push'
 export THEFUCK_REQUIRE_CONFIRMATION='true'
+export THEFUCK_REQUIRE_SAFETY_CONFIRMATION='true'
 export THEFUCK_WAIT_COMMAND=10
 export THEFUCK_NO_COLORS='false'
 export THEFUCK_PRIORITY='no_command=9999:apt_get=100'
+export THEFUCK_PROFILE='false'
 export THEFUCK_HISTORY_LIMIT='2000'
+export THEFUCK_RERUN_SAFE_ONLY='true'
 export THEFUCK_NUM_CLOSE_MATCHES='5'
 ```
 
@@ -531,10 +565,10 @@ then reading the log.
 
 [![gif with instant mode][instant-mode-gif-link]][instant-mode-gif-link]
 
-Currently, instant mode only supports Python 3 with bash or zsh. zsh's autocorrect function also needs to be disabled in order for thefuck to work properly.
+Currently, instant mode is supported for Python 3 with zsh. zsh's autocorrect function also needs to be disabled in order for thefuck to work properly.
 
 To enable instant mode, add `--enable-experimental-instant-mode`
-to the alias initialization in `.bashrc`, `.bash_profile` or `.zshrc`.
+to the alias initialization in `.zshrc`.
 
 For example:
 

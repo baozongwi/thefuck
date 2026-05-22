@@ -72,11 +72,14 @@ class TestSelectCommand(object):
         assert capsys.readouterr() == ('', const.USER_COMMAND_MARK + 'ls\n')
 
     def test_without_confirmation_with_side_effects(
-            self, capsys, commands_with_side_effect, settings):
+            self, capsys, patch_get_key, commands_with_side_effect, settings):
         settings.require_confirmation = False
+        patch_get_key(['\n'])
         assert (ui.select_command(iter(commands_with_side_effect))
                 == commands_with_side_effect[0])
-        assert capsys.readouterr() == ('', const.USER_COMMAND_MARK + 'ls (+side effect)\n')
+        assert capsys.readouterr() == (
+            '', const.USER_COMMAND_MARK
+            + u'\x1b[1K\rls (+side effect) [enter again/ctrl+c]\n')
 
     def test_with_confirmation(self, capsys, patch_get_key, commands):
         patch_get_key(['\n'])
@@ -92,11 +95,14 @@ class TestSelectCommand(object):
 
     def test_with_confirmation_with_side_effct(self, capsys, patch_get_key,
                                                commands_with_side_effect):
-        patch_get_key(['\n'])
+        patch_get_key(['\n', '\n'])
         assert (ui.select_command(iter(commands_with_side_effect))
                 == commands_with_side_effect[0])
         assert capsys.readouterr() == (
-            '', const.USER_COMMAND_MARK + u'\x1b[1K\rls (+side effect) [enter/↑/↓/ctrl+c]\n')
+            '', const.USER_COMMAND_MARK
+            + u'\x1b[1K\rls (+side effect) [enter/↑/↓/ctrl+c]'
+            + const.USER_COMMAND_MARK
+            + u'\x1b[1K\rls (+side effect) [enter again/ctrl+c]\n\n')
 
     def test_with_confirmation_select_second(self, capsys, patch_get_key, commands):
         patch_get_key([const.KEY_DOWN, '\n'])
@@ -106,3 +112,34 @@ class TestSelectCommand(object):
             u'{mark}\x1b[1K\rcd [enter/↑/↓/ctrl+c]\n'
         ).format(mark=const.USER_COMMAND_MARK)
         assert capsys.readouterr() == ('', stderr)
+
+    def test_with_confirmation_dangerous_requires_second_enter(
+            self, capsys, patch_get_key):
+        command = CorrectedCommand('rm -rf /tmp/project', None, 100,
+                                   rule_name='rm_dir')
+        patch_get_key(['\n', '\n'])
+        assert ui.select_command(iter([command])) == command
+        stderr = capsys.readouterr()[1]
+        assert '[rule: rm_dir]' in stderr
+        assert '[danger: rm -rf, rule:rm_dir]' in stderr
+        assert '[enter again/ctrl+c]' in stderr
+
+    def test_with_confirmation_dangerous_can_abort_second_confirm(
+            self, capsys, patch_get_key):
+        command = CorrectedCommand('rm -rf /tmp/project', None, 100,
+                                   rule_name='rm_dir')
+        patch_get_key(['\n', const.KEY_CTRL_C])
+        assert ui.select_command(iter([command])) is None
+        assert 'Aborted' in capsys.readouterr()[1]
+
+    def test_without_confirmation_side_effect_still_requires_enter(
+            self, capsys, patch_get_key, settings):
+        settings.require_confirmation = False
+        command = CorrectedCommand('ssh host', lambda *_: None, 100,
+                                   rule_name='ssh_known_hosts')
+        patch_get_key(['\n'])
+        assert ui.select_command(iter([command])) == command
+        stderr = capsys.readouterr()[1]
+        assert '[rule: ssh_known_hosts]' in stderr
+        assert '[side effect]' in stderr
+        assert '[enter again/ctrl+c]' in stderr

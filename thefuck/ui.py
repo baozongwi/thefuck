@@ -8,6 +8,23 @@ from .utils import get_alias
 from . import logs, const
 
 
+def _needs_safety_confirmation(command):
+    return (settings.require_safety_confirmation
+            and getattr(command, 'safety', None)
+            and command.safety.level in ('dangerous', 'side-effect'))
+
+
+def _confirm_safety(command):
+    logs.safety_confirm_text(command)
+    for action in read_actions():
+        if action == const.ACTION_SELECT:
+            sys.stderr.write('\n')
+            return True
+        elif action == const.ACTION_ABORT:
+            logs.failed('\nAborted')
+            return False
+
+
 def read_actions():
     """Yields actions for pressed keys."""
     while True:
@@ -75,6 +92,10 @@ def select_command(corrected_commands):
         return
 
     if not settings.require_confirmation:
+        if _needs_safety_confirmation(selector.value):
+            if _confirm_safety(selector.value):
+                return selector.value
+            return
         logs.show_corrected_command(selector.value)
         return selector.value
 
@@ -82,6 +103,9 @@ def select_command(corrected_commands):
 
     for action in read_actions():
         if action == const.ACTION_SELECT:
+            if _needs_safety_confirmation(selector.value):
+                if not _confirm_safety(selector.value):
+                    return
             sys.stderr.write('\n')
             return selector.value
         elif action == const.ACTION_ABORT:

@@ -108,8 +108,9 @@ class Settings(dict):
         elif attr in ('wait_command', 'history_limit', 'wait_slow_command',
                       'num_close_matches'):
             return int(val)
-        elif attr in ('require_confirmation', 'no_colors', 'debug',
-                      'alter_history', 'instant_mode'):
+        elif attr in ('require_confirmation', 'no_colors', 'debug', 'profile',
+                      'alter_history', 'instant_mode',
+                      'require_safety_confirmation', 'rerun_safe_only'):
             return val.lower() == 'true'
         elif attr in ('slow_commands', 'excluded_search_path_prefixes'):
             return val.split(':')
@@ -132,6 +133,8 @@ class Settings(dict):
             from_args['require_confirmation'] = not args.yes
         if args.debug:
             from_args['debug'] = args.debug
+        if getattr(args, 'profile', False):
+            from_args['profile'] = args.profile
         if args.repeat:
             from_args['repeat'] = args.repeat
         return from_args

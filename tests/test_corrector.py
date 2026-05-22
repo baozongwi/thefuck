@@ -61,6 +61,28 @@ def test_get_corrected_commands(mocker):
             == ['test!', 'test@', 'test;'])
 
 
+def test_get_corrected_commands_prefilters_app_specific_rules(mocker, glob,
+                                                              settings):
+    loaded = []
+
+    def load_source(name, _):
+        loaded.append(name)
+        return Rule(name, match=lambda command: False)
+
+    mocker.patch('thefuck.types.load_source', side_effect=load_source)
+    glob([Path('git_push.py'), Path('npm_wrong_command.py'),
+          Path('no_command.py')])
+    settings.update(rules=const.DEFAULT_RULES,
+                    priority={},
+                    exclude_rules=[])
+
+    list(get_corrected_commands(Command('git push', '')))
+
+    assert 'git_push' in loaded
+    assert 'no_command' in loaded
+    assert 'npm_wrong_command' not in loaded
+
+
 def test_organize_commands():
     """Ensures that the function removes duplicates and sorts commands."""
     commands = [CorrectedCommand('ls'), CorrectedCommand('ls -la', priority=9000),

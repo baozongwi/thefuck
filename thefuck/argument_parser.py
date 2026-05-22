@@ -43,6 +43,10 @@ class Parser(object):
             action='store_true',
             help='enable debug output')
         self._parser.add_argument(
+            '--profile',
+            action='store_true',
+            help='show timing information for rule loading and matching')
+        self._parser.add_argument(
             '--force-command',
             action='store',
             help=SUPPRESS)

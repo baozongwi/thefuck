@@ -83,6 +83,8 @@ class TestFish(object):
         assert 'TF_SHELL=fish' in shell.app_alias('fuck')
         assert 'TF_ALIAS=fuck PYTHONIOENCODING' in shell.app_alias('fuck')
         assert 'PYTHONIOENCODING=utf-8 thefuck' in shell.app_alias('fuck')
+        assert 'thefuck "$fucked_up_command"' in shell.app_alias('fuck')
+        assert 'eval "$unfucked_command"' in shell.app_alias('fuck')
         assert ARGUMENT_PLACEHOLDER in shell.app_alias('fuck')
 
     def test_app_alias_alter_history(self, settings, shell):
@@ -95,6 +97,14 @@ class TestFish(object):
         settings.alter_history = False
         assert 'builtin history delete' not in shell.app_alias('FUCK')
         assert 'builtin history merge' not in shell.app_alias('FUCK')
+
+    def test_expand_aliases_escapes_fish_interpolation(self, shell, mocker):
+        mocker.patch.object(shell, 'get_aliases', return_value={'ll': 'echo'})
+        assert shell._expand_aliases('ll "$HOME" `date` \\') == \
+            'echo "$HOME" `date` \\'
+        mocker.patch.object(shell, 'get_aliases', return_value={'fish_alias': 'fish_alias'})
+        assert shell._expand_aliases('fish_alias "$HOME" `date` \\') == \
+            'fish -ic "fish_alias \\"\\$HOME\\" \\`date\\` \\\\"'
 
     def test_get_history(self, history_lines, shell):
         history_lines(['- cmd: ls', '  when: 1432613911',

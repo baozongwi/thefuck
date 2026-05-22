@@ -6,9 +6,9 @@ update The Fuck and see if the bug is still there.
 If it is (sorry again), check if the problem has not already been reported and
 if not, just open an issue on [GitHub](https://github.com/nvbn/thefuck) with
 the following basic information:
-  - the output of `thefuck --version` (something like `The Fuck 3.1 using
-    Python 3.5.0`);
-  - your shell and its version (`bash`, `zsh`, *Windows PowerShell*, etc.);
+  - the output of `thefuck --version` (something like `The Fuck 3.32 using
+    Python 3.13.0`);
+  - your zsh version;
   - your system (Debian 7, ArchLinux, Windows, etc.);
   - how to reproduce the bug;
   - the output of The Fuck with `THEFUCK_DEBUG=true` exported (typically execute

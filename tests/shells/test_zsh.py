@@ -3,6 +3,7 @@
 import os
 import pytest
 from thefuck.shells.zsh import Zsh
+from thefuck.const import ARGUMENT_PLACEHOLDER
 
 
 @pytest.mark.usefixtures('isfile', 'no_memoize', 'no_cache')
@@ -60,6 +61,9 @@ class TestZsh(object):
         assert "TF_ALIAS=fuck" in alias
         assert 'PYTHONIOENCODING=utf-8' in alias
         assert 'TF_SHELL_ALIASES=$(alias)' in alias
+        assert 'thefuck {} "$@"'.format(ARGUMENT_PLACEHOLDER) in alias
+        assert 'eval "$TF_CMD"' in alias
+        assert 'print -s -- "$TF_CMD"' in alias
 
     def test_get_history(self, history_lines, shell):
         history_lines([': 1432613911:0;ls', ': 1432613916:0;rm'])

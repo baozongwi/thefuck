@@ -6,6 +6,7 @@ from thefuck.const import ARGUMENT_PLACEHOLDER
 def _args(**override):
     args = {'alias': None, 'command': [], 'yes': False,
             'help': False, 'version': False, 'debug': False,
+            'profile': False,
             'force_command': None, 'repeat': False,
             'enable_experimental_instant_mode': False,
             'shell_logger': None}
@@ -29,6 +30,8 @@ def _args(**override):
      _args(command=['git', 'branch', '-a'], yes=True, debug=True)),
     (['thefuck', 'git', 'branch', '-a', ARGUMENT_PLACEHOLDER, '-r', '-d'],
      _args(command=['git', 'branch', '-a'], repeat=True, debug=True)),
+    (['thefuck', 'git', 'branch', ARGUMENT_PLACEHOLDER, '--profile'],
+     _args(command=['git', 'branch'], profile=True)),
     (['thefuck', '-l', '/tmp/log'], _args(shell_logger='/tmp/log')),
     (['thefuck', '--shell-logger', '/tmp/log'],
      _args(shell_logger='/tmp/log'))])

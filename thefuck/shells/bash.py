@@ -31,7 +31,7 @@ class Bash(Generic):
         '''.format(
             name=alias_name,
             argument_placeholder=ARGUMENT_PLACEHOLDER,
-            alter_history=('history -s $TF_CMD;'
+            alter_history=('history -s -- "$TF_CMD";'
                            if settings.alter_history else ''))
 
     def instant_mode_alias(self, alias_name):
@@ -49,9 +49,9 @@ class Bash(Generic):
                 export THEFUCK_INSTANT_MODE=True;
                 export THEFUCK_OUTPUT_LOG={log};
                 thefuck --shell-logger {log};
-                rm {log};
+                rm -f {log};
                 exit
-            '''.format(log=log_path)
+            '''.format(log=self.quote(log_path))
 
     def _parse_alias(self, alias):
         name, value = alias.replace('alias ', '', 1).split('=', 1)

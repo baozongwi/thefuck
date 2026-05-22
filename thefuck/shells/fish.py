@@ -59,9 +59,9 @@ class Fish(Generic):
         return ('function {0} -d "Correct your previous console command"\n'
                 '  set -l fucked_up_command $history[1]\n'
                 '  env TF_SHELL=fish TF_ALIAS={0} PYTHONIOENCODING=utf-8'
-                ' thefuck $fucked_up_command {2} $argv | read -l unfucked_command\n'
+                ' thefuck "$fucked_up_command" {2} $argv | read -l unfucked_command\n'
                 '  if [ "$unfucked_command" != "" ]\n'
-                '    eval $unfucked_command\n{1}'
+                '    eval "$unfucked_command"\n{1}'
                 '  end\n'
                 'end').format(alias_name, alter_history, ARGUMENT_PLACEHOLDER)
 
@@ -78,7 +78,12 @@ class Fish(Generic):
         if binary in aliases and aliases[binary] != binary:
             return command_script.replace(binary, aliases[binary], 1)
         elif binary in aliases:
-            return u'fish -ic "{}"'.format(command_script.replace('"', r'\"'))
+            escaped = (command_script
+                       .replace('\\', r'\\')
+                       .replace('"', r'\"')
+                       .replace('$', r'\$')
+                       .replace('`', r'\`'))
+            return u'fish -ic "{}"'.format(escaped)
         else:
             return command_script
 

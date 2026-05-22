@@ -5,6 +5,7 @@ from .shells import shell
 from .conf import settings, load_source
 from .const import DEFAULT_PRIORITY, ALL_ENABLED
 from .exceptions import EmptyCommand
+from .safety import assess_command
 from .utils import get_alias, format_raw_script
 from .output_readers import get_output
 
@@ -195,13 +196,14 @@ class Rule(object):
         for n, new_command in enumerate(new_commands):
             yield CorrectedCommand(script=new_command,
                                    side_effect=self.side_effect,
-                                   priority=(n + 1) * self.priority)
+                                   priority=(n + 1) * self.priority,
+                                   rule_name=self.name)
 
 
 class CorrectedCommand(object):
     """Corrected by rule command."""
 
-    def __init__(self, script, side_effect, priority):
+    def __init__(self, script, side_effect, priority, rule_name=None):
         """Initializes instance with given fields.
 
         :type script: basestring
@@ -212,6 +214,8 @@ class CorrectedCommand(object):
         self.script = script
         self.side_effect = side_effect
         self.priority = priority
+        self.rule_name = rule_name
+        self.safety = assess_command(script, side_effect, rule_name)
 
     def __eq__(self, other):
         """Ignores `priority` field."""
@@ -251,7 +255,13 @@ class CorrectedCommand(object):
 
         """
         if self.side_effect:
-            self.side_effect(old_cmd, self.script)
+            try:
+                self.side_effect(old_cmd, self.script)
+            except Exception:
+                logs.exception(
+                    'Side effect failed for corrected command',
+                    sys.exc_info())
+                return False
         if settings.alter_history:
             shell.put_to_history(self.script)
         # This depends on correct setting of PYTHONIOENCODING by the alias:
@@ -259,3 +269,4 @@ class CorrectedCommand(object):
             os.environ.get('PYTHONIOENCODING', '!!not-set!!')))
 
         sys.stdout.write(self._get_script())
+        return True
