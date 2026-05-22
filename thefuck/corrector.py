@@ -64,15 +64,15 @@ def _should_load_rule(rule_path, command=None):
         return True
 
     rule_name = rule_path.name[:-3]
-    if command.output is None and _rule_requires_output(rule_path):
-        return False
-
     prefix = _rule_prefix(rule_name)
     if prefix not in _APP_PREFIXES:
-        return True
+        return command.output is not None or not _rule_requires_output(rule_path)
 
     prefixes = _command_prefixes(command)
-    return not prefixes or prefix in prefixes
+    if prefixes and prefix not in prefixes:
+        return False
+
+    return command.output is not None or not _rule_requires_output(rule_path)
 
 
 def get_loaded_rules(rules_paths, command=None):

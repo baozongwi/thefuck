@@ -64,12 +64,16 @@ def test_get_corrected_commands(mocker):
 def test_get_corrected_commands_prefilters_app_specific_rules(mocker, glob,
                                                               settings):
     loaded = []
+    checked_output = []
 
     def load_source(name, _):
         loaded.append(name)
         return Rule(name, match=lambda command: False)
 
     mocker.patch('thefuck.types.load_source', side_effect=load_source)
+    mocker.patch('thefuck.corrector._rule_requires_output',
+                 side_effect=lambda path: checked_output.append(path.name)
+                 or False)
     glob([Path('git_push.py'), Path('npm_wrong_command.py'),
           Path('no_command.py')])
     settings.update(rules=const.DEFAULT_RULES,
@@ -81,6 +85,7 @@ def test_get_corrected_commands_prefilters_app_specific_rules(mocker, glob,
     assert 'git_push' in loaded
     assert 'no_command' in loaded
     assert 'npm_wrong_command' not in loaded
+    assert 'npm_wrong_command.py' not in checked_output
 
 
 def test_get_corrected_commands_skips_output_rules_before_rerun(
