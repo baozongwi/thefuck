@@ -83,6 +83,32 @@ def test_get_corrected_commands_prefilters_app_specific_rules(mocker, glob,
     assert 'npm_wrong_command' not in loaded
 
 
+def test_get_corrected_commands_skips_output_rules_before_rerun(
+        mocker, glob, settings):
+    loaded = []
+
+    def load_source(name, _):
+        loaded.append(name)
+        return Rule(name, match=lambda command: False,
+                    requires_output=False)
+
+    def requires_output(path):
+        return path.name != 'git_hook_bypass.py'
+
+    mocker.patch('thefuck.types.load_source', side_effect=load_source)
+    mocker.patch('thefuck.corrector._rule_requires_output',
+                 side_effect=requires_output)
+    glob([Path('git_push.py'), Path('git_hook_bypass.py'),
+          Path('no_command.py')])
+    settings.update(rules=const.DEFAULT_RULES,
+                    priority={},
+                    exclude_rules=[])
+
+    list(get_corrected_commands(Command('git commit --no-verify', None)))
+
+    assert loaded == ['git_hook_bypass']
+
+
 def test_organize_commands():
     """Ensures that the function removes duplicates and sorts commands."""
     commands = [CorrectedCommand('ls'), CorrectedCommand('ls -la', priority=9000),

@@ -17,6 +17,22 @@ _APP_PREFIXES = set([
     'whois', 'workon', 'yarn', 'yum'
 ])
 
+_REQUIRES_OUTPUT_CACHE = {}
+
+
+def _rule_requires_output(rule_path):
+    """Cheaply detects whether a rule can run before command output exists."""
+    key = str(rule_path)
+    if key not in _REQUIRES_OUTPUT_CACHE:
+        try:
+            with rule_path.open() as rule_file:
+                source = rule_file.read()
+        except OSError:
+            _REQUIRES_OUTPUT_CACHE[key] = True
+        else:
+            _REQUIRES_OUTPUT_CACHE[key] = 'requires_output = False' not in source
+    return _REQUIRES_OUTPUT_CACHE[key]
+
 
 def _command_prefixes(command):
     if not command.script_parts:
@@ -48,6 +64,9 @@ def _should_load_rule(rule_path, command=None):
         return True
 
     rule_name = rule_path.name[:-3]
+    if command.output is None and _rule_requires_output(rule_path):
+        return False
+
     prefix = _rule_prefix(rule_name)
     if prefix not in _APP_PREFIXES:
         return True
