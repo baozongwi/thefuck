@@ -1,4 +1,4 @@
-# The Fuck [![Version][version-badge]][version-link] [![Build Status][workflow-badge]][workflow-link] [![Coverage][coverage-badge]][coverage-link] [![MIT License][license-badge]](LICENSE.md)
+# The Fuck (zsh safety fork) [![Build Status][workflow-badge]][workflow-link] [![MIT License][license-badge]](LICENSE.md)
 
 *The Fuck* is a magnificent app, inspired by a [@liamosaur](https://twitter.com/liamosaur/)
 [tweet](https://twitter.com/liamosaur/status/506975850596536320),
@@ -46,7 +46,7 @@ zsh: command not found: puthon
 
 ➜ fuck
 python [enter/↑/↓/ctrl+c]
-Python 3.4.2 (default, Oct  8 2014, 13:08:17)
+Python 3.13.0 (default, Oct  8 2025, 13:08:17)
 ...
 ```
 
@@ -76,8 +76,10 @@ REPL-y 0.3.1
 ...
 ```
 
-If you're not afraid of blindly running corrected commands, the
-`require_confirmation` [settings](#settings) option can be disabled:
+If you want to skip ordinary confirmation prompts, the
+`require_confirmation` [settings](#settings) option can be disabled. This fork
+still inserts accepted zsh fixes back into your prompt for review and still
+enforces safety confirmations for dangerous commands:
 
 ```bash
 ➜ apt-get install vim
@@ -94,7 +96,7 @@ Reading package lists... Done
 ## Contents
 
 1. [Requirements](#requirements)
-2. [Installations](#installation)
+2. [Installation](#installation)
 3. [Updating](#updating)
 4. [How it works](#how-it-works)
 5. [Creating your own rules](#creating-your-own-rules)
@@ -106,58 +108,67 @@ Reading package lists... Done
 
 ## Requirements
 
-- python (3.8+)
+- Python 3.8+
 - pip
-- python-dev
+- zsh
+- `python3-dev` (Linux only, when building packages from source)
 
 ##### [Back to Contents](#contents)
 
 ## Installation
 
-On macOS or Linux, you can install *The Fuck* via [Homebrew][homebrew]:
+This fork is optimized for **zsh** and requires **Python 3.8+**. If you have
+the upstream PyPI package installed, remove it first to avoid using the old
+entry points:
 
 ```bash
-brew install thefuck
+python3 -m pip uninstall -y thefuck
 ```
 
-On Ubuntu / Mint, install *The Fuck* with the following commands:
-```bash
-sudo apt update
-sudo apt install python3-dev python3-pip python3-setuptools
-pip3 install thefuck --user
-```
-
-On FreeBSD, install *The Fuck* with the following commands:
-```bash
-pkg install thefuck
-```
-
-On ChromeOS, install *The Fuck* using [chromebrew](https://github.com/skycocker/chromebrew) with the following command:
-```bash
-crew install thefuck
-```
-
-On Arch based systems, install *The Fuck* with the following command:
-```
-sudo pacman -S thefuck
-```
-
-On other systems, install *The Fuck*  by using `pip`:
+Install directly from this repository branch:
 
 ```bash
-pip install thefuck
+python3 -m pip install --user --force-reinstall \
+  "git+https://github.com/baozongwi/thefuck.git@optimize-safety-performance"
 ```
 
-[Alternatively, you may use an OS package manager (OS X, Ubuntu, Arch).](https://github.com/nvbn/thefuck/wiki/Installation)
+Make sure Python's user script directory is in your zsh `PATH` before running
+`thefuck --alias` (for example `~/.local/bin` on many Linux systems or
+`~/Library/Python/<version>/bin` on macOS).
+
+To build a local wheel and source package from this checkout:
+
+```bash
+python3 -m pip install --upgrade pip build
+python3 -m build
+ls dist/
+```
+
+The generated artifacts are:
+
+```text
+dist/thefuck-3.32.1-py3-none-any.whl
+dist/thefuck-3.32.1.tar.gz
+```
+
+Then install the local wheel:
+
+```bash
+python3 -m pip install --user --force-reinstall dist/thefuck-3.32.1-py3-none-any.whl
+```
+
+Package-manager installs such as Homebrew, apt, pacman, pkg, or the upstream
+PyPI package may install the original upstream project instead of this fork, so
+use the GitHub or local wheel commands above if you want the zsh safety changes.
 
 <a href='#manual-installation' name='manual-installation'>#</a>
 The optimized shell integration is zsh-only. Put this command in your
 `.zshrc`:
 
 ```bash
-eval $(thefuck --alias)
+eval "$(thefuck --alias)"
 # You can use whatever you want as an alias, like for Mondays:
-eval $(thefuck --alias FUCK)
+eval "$(thefuck --alias FUCK)"
 ```
 
 Changes are only available in a new shell session. To make changes immediately
@@ -197,21 +208,24 @@ commands before doing deeper optimization.
 ## Updating
 
 ```bash
-pip3 install thefuck --upgrade
+python3 -m pip install --user --upgrade \
+  --force-reinstall \
+  "git+https://github.com/baozongwi/thefuck.git@optimize-safety-performance"
 ```
 
-**Note: Alias functionality was changed in v1.34 of *The Fuck***
+Restart zsh or run `source ~/.zshrc` after upgrading if the alias function was
+already loaded in your current shell.
 
 ## Uninstall
 
 To remove *The Fuck*, reverse the installation process:
 - erase or comment *thefuck* alias line from your `.zshrc`
-- use your package manager (brew, pip3, pkg, crew, pip) to uninstall the binaries
+- uninstall the package with `python3 -m pip uninstall thefuck`
 
 ## How it works
 
 *The Fuck* attempts to match the previous command with a rule. If a match is
-found, a new command is created using the matched rule and executed. The UI
+found, a new command is created using the matched rule and shown for review. The UI
 shows the matched rule name and marks commands with side effects or dangerous
 operations. In zsh, accepted fixes are inserted back into the prompt with
 `print -z` instead of being evaluated immediately; press Enter yourself after
@@ -575,7 +589,7 @@ to the alias initialization in `.zshrc`.
 For example:
 
 ```bash
-eval $(thefuck --alias --enable-experimental-instant-mode)
+eval "$(thefuck --alias --enable-experimental-instant-mode)"
 ```
 
 ##### [Back to Contents](#contents)
@@ -588,12 +602,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 Project License can be found [here](LICENSE.md).
 
 
-[version-badge]:   https://img.shields.io/pypi/v/thefuck.svg?label=version
-[version-link]:    https://pypi.python.org/pypi/thefuck/
-[workflow-badge]:  https://github.com/nvbn/thefuck/workflows/Tests/badge.svg
-[workflow-link]:   https://github.com/nvbn/thefuck/actions?query=workflow%3ATests
-[coverage-badge]:  https://img.shields.io/coveralls/nvbn/thefuck.svg
-[coverage-link]:   https://coveralls.io/github/nvbn/thefuck
+[workflow-badge]:  https://github.com/baozongwi/thefuck/workflows/Tests/badge.svg
+[workflow-link]:   https://github.com/baozongwi/thefuck/actions?query=workflow%3ATests
 [license-badge]:   https://img.shields.io/badge/license-MIT-007EC7.svg
 [examples-link]:   https://raw.githubusercontent.com/nvbn/thefuck/master/example.gif
 [instant-mode-gif-link]:   https://raw.githubusercontent.com/nvbn/thefuck/master/example_instant_mode.gif

@@ -13,8 +13,10 @@ def get_new_setup_py_lines():
         current_setup = sf.readlines()
     for line in current_setup:
         if line.startswith('VERSION = '):
-            major, minor = re.findall(r"VERSION = '(\d+)\.(\d+)'", line)[0]
-            version = "{}.{}".format(major, int(minor) + 1)
+            match = re.findall(r"VERSION = '(\d+)\.(\d+)(?:\.(\d+))?'", line)[0]
+            major, minor, patch = match
+            patch = int(patch or 0) + 1
+            version = "{}.{}.{}".format(major, minor, patch)
             yield "VERSION = '{}'\n".format(version)
         else:
             yield line

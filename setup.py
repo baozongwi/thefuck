@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-from setuptools import setup, find_packages
-import sys
 import os
-import fastentrypoints
+import sys
 
-if os.environ.get('CONVERT_README'):
-    import pypandoc
+from setuptools import setup, find_packages
 
-    long_description = pypandoc.convert('README.md', 'rst')
-else:
-    long_description = ''
+
+with open(os.path.join(os.path.dirname(__file__), 'README.md'),
+          encoding='utf-8') as readme_file:
+    long_description = readme_file.read()
 
 version = sys.version_info[:2]
 if version < (3, 8):
@@ -17,30 +15,21 @@ if version < (3, 8):
           ' ({}.{} detected).'.format(*version))
     sys.exit(-1)
 
-VERSION = '3.32'
+VERSION = '3.32.1'
 
 install_requires = ['psutil', 'colorama', 'decorator', 'pyte']
-extras_require = {
-                  ":sys_platform=='win32'": ['win_unicode_console']}
-
-if sys.platform == "win32":
-    scripts = ['scripts\\fuck.bat', 'scripts\\fuck.ps1']
-    entry_points = {'console_scripts': [
-                  'thefuck = thefuck.entrypoints.main:main',
-                  'thefuck_firstuse = thefuck.entrypoints.not_configured:main']}
-else:
-    scripts = []
-    entry_points = {'console_scripts': [
-                  'thefuck = thefuck.entrypoints.main:main',
-                  'fuck = thefuck.entrypoints.not_configured:main']}
+entry_points = {'console_scripts': [
+              'thefuck = thefuck.entrypoints.main:main',
+              'fuck = thefuck.entrypoints.not_configured:main']}
 
 setup(name='thefuck',
       version=VERSION,
       description="Magnificent app which corrects your previous console command",
       long_description=long_description,
+      long_description_content_type='text/markdown',
       author='Vladimir Iakovlev',
       author_email='nvbn.rm@gmail.com',
-      url='https://github.com/nvbn/thefuck',
+      url='https://github.com/baozongwi/thefuck',
       license='MIT',
       packages=find_packages(exclude=['ez_setup', 'examples',
                                       'tests', 'tests.*', 'release']),
@@ -48,6 +37,4 @@ setup(name='thefuck',
       zip_safe=False,
       python_requires='>=3.8',
       install_requires=install_requires,
-      extras_require=extras_require,
-      scripts=scripts,
       entry_points=entry_points)
