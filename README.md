@@ -108,84 +108,93 @@ Reading package lists... Done
 
 ## Requirements
 
+- zsh
 - Python 3.8+
 - pip
-- zsh
-- `python3-dev` (Linux only, when building packages from source)
+- git（更新本地仓库时需要）
 
 ##### [Back to Contents](#contents)
 
 ## Installation
 
-This fork is optimized for **zsh** and requires **Python 3.8+**. If you have
-the upstream PyPI package installed, remove it first to avoid using the old
-entry points:
+这个 fork 现在按本地 zsh 使用场景维护。推荐直接从当前 checkout 安装：
 
 ```bash
+cd /Users/baozongwi/Downloads/thefuck
 python3 -m pip uninstall -y thefuck
+python3 -m pip install --user --force-reinstall .
 ```
 
-Install directly from this repository branch:
+确认当前 shell 能找到本地安装的命令：
 
 ```bash
-python3 -m pip install --user --force-reinstall \
-  "git+https://github.com/baozongwi/thefuck.git@optimize-safety-performance"
+export PATH="$(python3 -m site --user-base)/bin:$PATH"
+command -v thefuck
+thefuck --version
+thefuck --alias | grep 'print -z'
 ```
 
-Make sure Python's user script directory is in your zsh `PATH` before running
-`thefuck --alias` (for example `~/.local/bin` on many Linux systems or
-`~/Library/Python/<version>/bin` on macOS).
-
-To build a local wheel and source package from this checkout:
+把 Python user bin 和 zsh alias 写进 `~/.zshrc`：
 
 ```bash
+cat >> ~/.zshrc <<'EOF'
+export PATH="$(python3 -m site --user-base)/bin:$PATH"
+eval "$(thefuck --alias)"
+EOF
+
+source ~/.zshrc
+```
+
+如果你想使用别名 `FUCK`，把上面的 alias 行换成：
+
+```bash
+eval "$(thefuck --alias FUCK)"
+```
+
+如果你不想依赖当前源码目录，也可以先打包再安装 wheel：
+
+```bash
+cd /Users/baozongwi/Downloads/thefuck
+rm -rf dist build thefuck.egg-info
 python3 -m pip install --upgrade pip build
 python3 -m build
-ls dist/
+python3 -m pip install --user --force-reinstall dist/*.whl
 ```
 
-The generated artifacts are:
+打包后会生成：
 
 ```text
 dist/thefuck-3.32.1-py3-none-any.whl
 dist/thefuck-3.32.1.tar.gz
 ```
 
-Then install the local wheel:
+如果你一定要绕过本地目录、直接从远程分支安装，可以用：
 
 ```bash
-python3 -m pip install --user --force-reinstall dist/thefuck-3.32.1-py3-none-any.whl
+python3 -m pip install --user --force-reinstall \
+  "git+https://github.com/baozongwi/thefuck.git@optimize-safety-performance"
 ```
 
-Package-manager installs such as Homebrew, apt, pacman, pkg, or the upstream
-PyPI package may install the original upstream project instead of this fork, so
-use the GitHub or local wheel commands above if you want the zsh safety changes.
+不要用 `brew install thefuck`、`apt install thefuck` 或
+`pip install thefuck` 安装这个 fork；这些命令通常会安装上游版本，不包含这里的
+zsh 安全确认和 `print -z` 行为。
 
 <a href='#manual-installation' name='manual-installation'>#</a>
-The optimized shell integration is zsh-only. Put this command in your
-`.zshrc`:
+The optimized shell integration is zsh-only. Accepted fixes are inserted into
+your zsh prompt instead of being executed immediately.
 
-```bash
-eval "$(thefuck --alias)"
-# You can use whatever you want as an alias, like for Mondays:
-eval "$(thefuck --alias FUCK)"
-```
-
-Changes are only available in a new shell session. To make changes immediately
-available, run `source ~/.zshrc`.
-
-To run fixed commands without confirmation, use the `--yeah` option (or just `-y` for short, or `--hard` if you're especially frustrated):
+To skip ordinary confirmation prompts, use the `--yeah` option (or just `-y`
+for short, or `--hard` if you're especially frustrated):
 
 ```bash
 fuck --yeah
 ```
 
-Safety confirmations are still enforced for commands that look destructive
-or have rule side effects. For example, fixes that add `rm -rf`, `sudo`,
-`kill`, force-push/delete Git state, install packages, modify `known_hosts`,
-or run a rule `side_effect` require an extra confirmation before anything is
-printed back to the shell for execution. Set `require_safety_confirmation = False`
-only if you explicitly want the old fully automatic behavior.
+`--yeah` only skips the normal prompt. Safety confirmations are still enforced
+for commands that look destructive or have rule side effects. For example,
+fixes that add `rm -rf`, `sudo`, `kill`, force-push/delete Git state, install
+packages, modify `known_hosts`, or run a rule `side_effect` require an extra
+confirmation before anything is printed back to the shell for execution.
 
 To fix commands recursively until succeeding, use the `-r` option:
 
@@ -208,9 +217,9 @@ commands before doing deeper optimization.
 ## Updating
 
 ```bash
-python3 -m pip install --user --upgrade \
-  --force-reinstall \
-  "git+https://github.com/baozongwi/thefuck.git@optimize-safety-performance"
+cd /Users/baozongwi/Downloads/thefuck
+git pull --ff-only
+python3 -m pip install --user --force-reinstall .
 ```
 
 Restart zsh or run `source ~/.zshrc` after upgrading if the alias function was
@@ -467,9 +476,9 @@ priority = 1000  # Lower first, default is 1000
 requires_output = True
 ```
 
-[More examples of rules](https://github.com/nvbn/thefuck/tree/master/thefuck/rules),
-[utility functions for rules](https://github.com/nvbn/thefuck/tree/master/thefuck/utils.py),
-[app/os-specific helpers](https://github.com/nvbn/thefuck/tree/master/thefuck/specific/).
+[More examples of rules](thefuck/rules),
+[utility functions for rules](thefuck/utils.py),
+[app/os-specific helpers](thefuck/specific/).
 
 ##### [Back to Contents](#contents)
 
@@ -605,8 +614,7 @@ Project License can be found [here](LICENSE.md).
 [workflow-badge]:  https://github.com/baozongwi/thefuck/workflows/Tests/badge.svg
 [workflow-link]:   https://github.com/baozongwi/thefuck/actions?query=workflow%3ATests
 [license-badge]:   https://img.shields.io/badge/license-MIT-007EC7.svg
-[examples-link]:   https://raw.githubusercontent.com/nvbn/thefuck/master/example.gif
-[instant-mode-gif-link]:   https://raw.githubusercontent.com/nvbn/thefuck/master/example_instant_mode.gif
-[homebrew]:        https://brew.sh/
+[examples-link]:   example.gif
+[instant-mode-gif-link]:   example_instant_mode.gif
 
 ##### [Back to Contents](#contents)
